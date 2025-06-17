@@ -13,7 +13,7 @@ def chat_with_openrouter(api_key, messages, model="openrouter/openchat"):
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://t.me/ShinjoSoulBot",  # مهم جدًا لتفادي 401
+       "HTTP-Referer": "https://replit.com/@mj7addadcoder/shinjo-soul-gpt",  # مهم جدًا لتفادي 401
         "X-Title": "ShinjoSoulBot"
     }
     data = {
