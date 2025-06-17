@@ -6,81 +6,71 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-def chat_with_openrouter(api_key, messages, model="openrouter/gpt-3.5-turbo"):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    api_key = "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"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    payload = {"model": model, "messages": messages}
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        return "حدث خطأ أثناء الاتصال بـ GPT: " + str(e)
-
 def get_prompt_type(text: str) -> str:
     text = text.lower()
-    if any(w in text for w in ["فضفضة", "أبوح", "تعبان", "قلق", "وحداني", "ضيق"]):
-        return "أنت رفيق عاطفي يستمع دون حكم. كن حنونًا وداعمًا."
-    elif any(w in text for w in ["استشارة", "رأيك", "مشورة", "هل أبدأ"]):
-        return "أنت مستشار حكيم يعطي رأيًا عقلانيًا ومنطقيًا."
-    elif any(w in text for w in ["تحفيز", "يأس", "فشل", "أحبط"]):
-        return "كن محفزًا وصديقًا يشعل الأمل."
+    if "فضفضة" in text or "تعبان" in text:
+        return "أنت رفيق عاطفي يستمع بلطف دون أحكام. لا تعطي حلولًا، فقط استمع."
+    elif "استشارة" in text or "مشورة" in text:
+        return "كن عقلانيًا وتحليليًا وقدم خطوات واضحة كخبير محترف."
+    elif "تحفيز" in text or "يأس" in text:
+        return "كن مشجعًا جدًا كصديق وفي، اجعل كلامك طاقة نور وأمل."
     else:
-        return "كن مساعدًا ذكيًا، ورد بلطف دون أحكام."
+        return "كن رفيقًا ذكيًا، استمع ورد بلطف وبدون أحكام."
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    await update.message.reply_html(
-        f"مرحباً {user.first_name}! 💜\n\nأنا شينچو سول – رفيقك العاطفي. أرسل لي مشاعرك، فضفض لي، وخليني أساعدك.\nاكتب أي شيء الآن..."
+    await update.message.reply_text(
+        f"مرحباً بك، أنا Shinjo Soul GPT 💜 – رفيقك العاطفي.\nأرسل لي أي شيء وسأكون معك."
     )
 
-async def mood(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🧠 أرسل لي شعورك الحالي وسأحلله لك باستخدام GPT...")
-
-async def soul(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = chat_with_openrouter(OPENROUTER_API_KEY, [
-        {"role": "system", "content": "أرسل جملة تحفيزية قصيرة تشعل الأمل."},
-        {"role": "user", "content": "أعطني رسالة تحفيزية الآن"}
-    ])
-    await update.message.reply_text(msg)
-
 async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("💡 شينچو سول GPT – بوت دعم نفسي عاطفي مبني على OpenRouter. الإصدار المجاني ✨")
+    await update.message.reply_text("💡 شينچو سول GPT – بوت دعم نفسي عاطفي مبني على OpenRouter.\nالإصدار المجاني ✨")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("/start – بداية جديدة\n/mood – تحليل مشاعري\n/soul – رسالة تحفيزية\n/about – عن البوت\n/help – المساعدة")
+    await update.message.reply_text(
+        "/start – ابدأ الحديث مع شينچو سول\n"
+        "/mood – تحليل مشاعرك\n"
+        "/soul – رسالة تحفيزية\n"
+        "/about – عن البوت\n"
+        "/help – للمساعدة"
+    )
+
+def chat_with_openrouter(api_key, messages, model="openrouter/gpt-3.5-turbo"):
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://t.me/ShinjoSoulBot",
+        "X-Title": "Shinjo Soul GPT"
+    }
+    payload = {
+        "model": model,
+        "messages": messages
+    }
+    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        print("OpenRouter Error:", response.text)
+        return "حدث خطأ أثناء الاتصال بـ GPT، حاول لاحقًا 😞"
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    prompt = get_prompt_type(text)
-    messages = [{"role": "system", "content": prompt}, {"role": "user", "content": text}]
+    user_input = update.message.text
+    system_prompt = get_prompt_type(user_input)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input}
+    ]
     reply = chat_with_openrouter(OPENROUTER_API_KEY, messages)
     await update.message.reply_text(reply)
 
-async def set_commands(app: Application):
-    commands = [
-        BotCommand("start", "ابدأ الحديث مع شينچو سول"),
-        BotCommand("mood", "تحليل مشاعرك"),
-        BotCommand("soul", "رسالة تحفيزية"),
-        BotCommand("about", "عن البوت"),
-        BotCommand("help", "المساعدة")
-    ]
-    await app.bot.set_my_commands(commands)
-
 def main():
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("mood", mood))
-    app.add_handler(CommandHandler("soul", soul))
-    app.add_handler(CommandHandler("about", about))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.post_init = lambda _: set_commands(app)
-    app.run_polling()
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("about", about))
+    application.add_handler(CommandHandler("soul", handle_message))
+    application.add_handler(CommandHandler("mood", handle_message))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
