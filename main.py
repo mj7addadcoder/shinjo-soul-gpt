@@ -8,8 +8,9 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 def chat_with_openrouter(api_key, messages, model="openrouter/gpt-3.5-turbo"):
     url = "https://openrouter.ai/api/v1/chat/completions"
+    api_key = "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"
     headers = {
-        "Authorization": f"Bearer {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}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     payload = {"model": model, "messages": messages}
